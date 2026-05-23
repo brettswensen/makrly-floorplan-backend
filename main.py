@@ -19,6 +19,7 @@ app.add_middleware(
         "https://frontend-hriwmbv45-bretts-projects-5b005afd.vercel.app",
         "https://frontend-axn2ysrph-bretts-projects-5b005afd.vercel.app",
         "https://frontend-gzl8cgnym-bretts-projects-5b005afd.vercel.app",
+        "https://frontend-2choj44o6-bretts-projects-5b005afd.vercel.app",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
