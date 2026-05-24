@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,31 +19,27 @@ class Wall(BaseModel):
 
 class Door(BaseModel):
     id: str
-    wall_id: str
-    position: Point
+    wallId: str
+    position: float = Field(..., ge=0.0, le=1.0)
     width: float = 3.0
 
 
 class Window(BaseModel):
     id: str
-    wall_id: str
-    position: Point
+    wallId: str
+    position: float = Field(..., ge=0.0, le=1.0)
     width: float = 4.0
 
 
 class Room(BaseModel):
     id: str
     name: str
-    polygon: List[Point]
-    area_sqft: float
-
-
-class Scale(BaseModel):
-    unit: Literal["feet", "meters"] = "feet"
-    pixels_per_unit: float = Field(..., gt=0)
+    points: List[Point]
+    areaSqft: float
 
 
 class FloorPlan(BaseModel):
+    id: str = "fp_mock_1"
     name: str = "Parsed Floor Plan"
     width: float = Field(..., gt=0)
     height: float = Field(..., gt=0)
@@ -51,7 +47,7 @@ class FloorPlan(BaseModel):
     walls: List[Wall]
     doors: List[Door]
     windows: List[Window]
-    scale: Scale
+    scale: float = Field(0.125, gt=0)
 
 
 class ModifyFloorPlanRequest(BaseModel):

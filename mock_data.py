@@ -4,7 +4,7 @@ import copy
 import re
 from typing import Dict, List
 
-from models import Door, FloorPlan, Point, Room, Scale, Wall, Window
+from models import Door, FloorPlan, Point, Room, Wall, Window
 
 
 ROOM_SHIFTABLE_NAMES = {"kitchen", "living room", "bedroom", "bathroom", "office"}
@@ -14,17 +14,19 @@ def _rectangle_points(x1: float, y1: float, x2: float, y2: float) -> List[Point]
     return [Point(x=x1, y=y1), Point(x=x2, y=y1), Point(x=x2, y=y2), Point(x=x1, y=y2)]
 
 
+def _position_along_wall(wall: Wall, p: Point) -> float:
+    dx = wall.end.x - wall.start.x
+    dy = wall.end.y - wall.start.y
+    denom = dx * dx + dy * dy
+    if denom <= 0:
+        return 0.0
+    t = ((p.x - wall.start.x) * dx + (p.y - wall.start.y) * dy) / denom
+    return max(0.0, min(1.0, t))
+
+
 def generate_mock_floor_plan(filename: str | None = None) -> FloorPlan:
     """Creates a realistic 5-room house-like plan in feet."""
     plan_name = "Hardy Residence - Main Level" if filename else "Mock Residence - Main Level"
-
-    rooms = [
-        Room(id="room_living", name="Living Room", polygon=_rectangle_points(0, 0, 18, 14), area_sqft=252),
-        Room(id="room_kitchen", name="Kitchen", polygon=_rectangle_points(18, 0, 30, 12), area_sqft=144),
-        Room(id="room_bed1", name="Bedroom", polygon=_rectangle_points(0, 14, 14, 26), area_sqft=168),
-        Room(id="room_bath", name="Bathroom", polygon=_rectangle_points(14, 14, 20, 22), area_sqft=48),
-        Room(id="room_office", name="Office", polygon=_rectangle_points(20, 12, 30, 26), area_sqft=140),
-    ]
 
     walls = [
         Wall(id="w1", start=Point(x=0, y=0), end=Point(x=30, y=0)),
@@ -36,20 +38,38 @@ def generate_mock_floor_plan(filename: str | None = None) -> FloorPlan:
         Wall(id="w7", start=Point(x=14, y=14), end=Point(x=14, y=22)),
         Wall(id="w8", start=Point(x=20, y=12), end=Point(x=20, y=26)),
     ]
+    wall_map = {w.id: w for w in walls}
 
-    doors = [
-        Door(id="d1", wall_id="w4", position=Point(x=0, y=6), width=3.0),
-        Door(id="d2", wall_id="w5", position=Point(x=18, y=8), width=2.8),
-        Door(id="d3", wall_id="w6", position=Point(x=10, y=14), width=3.0),
+    rooms = [
+        Room(id="room_living", name="Living Room", points=_rectangle_points(0, 0, 18, 14), areaSqft=252),
+        Room(id="room_kitchen", name="Kitchen", points=_rectangle_points(18, 0, 30, 12), areaSqft=144),
+        Room(id="room_bed1", name="Bedroom", points=_rectangle_points(0, 14, 14, 26), areaSqft=168),
+        Room(id="room_bath", name="Bathroom", points=_rectangle_points(14, 14, 20, 22), areaSqft=48),
+        Room(id="room_office", name="Office", points=_rectangle_points(20, 12, 30, 26), areaSqft=140),
     ]
 
+    door_points = [
+        ("d1", "w4", Point(x=0, y=6), 3.0),
+        ("d2", "w5", Point(x=18, y=8), 2.8),
+        ("d3", "w6", Point(x=10, y=14), 3.0),
+    ]
+    doors = [
+        Door(id=d_id, wallId=wall_id, position=_position_along_wall(wall_map[wall_id], p), width=width)
+        for d_id, wall_id, p, width in door_points
+    ]
+
+    window_points = [
+        ("win1", "w1", Point(x=10, y=0), 5.0),
+        ("win2", "w2", Point(x=30, y=10), 4.0),
+        ("win3", "w3", Point(x=22, y=26), 4.5),
+    ]
     windows = [
-        Window(id="win1", wall_id="w1", position=Point(x=10, y=0), width=5.0),
-        Window(id="win2", wall_id="w2", position=Point(x=30, y=10), width=4.0),
-        Window(id="win3", wall_id="w3", position=Point(x=22, y=26), width=4.5),
+        Window(id=w_id, wallId=wall_id, position=_position_along_wall(wall_map[wall_id], p), width=width)
+        for w_id, wall_id, p, width in window_points
     ]
 
     return FloorPlan(
+        id="fp_mock_1",
         name=plan_name,
         width=30,
         height=26,
@@ -57,7 +77,7 @@ def generate_mock_floor_plan(filename: str | None = None) -> FloorPlan:
         walls=walls,
         doors=doors,
         windows=windows,
-        scale=Scale(unit="feet", pixels_per_unit=12.0),
+        scale=0.125,
     )
 
 
@@ -83,7 +103,7 @@ def _direction_to_vector(direction: str, distance: float) -> tuple[float, float]
 
 
 def _move_room(room: Room, dx: float, dy: float) -> None:
-    room.polygon = [Point(x=p.x + dx, y=p.y + dy) for p in room.polygon]
+    room.points = [Point(x=p.x + dx, y=p.y + dy) for p in room.points]
 
 
 def apply_mock_modification(floor_plan: FloorPlan, command: str) -> Dict:
